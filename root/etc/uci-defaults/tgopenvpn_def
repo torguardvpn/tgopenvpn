@@ -1,0 +1,12 @@
+#!/bin/sh
+
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@tgopenvpn_def[-1]
+	add ucitrack tgopenvpn
+	set ucitrack.@tgopenvpn[-1].init=tgopenvpn
+	commit ucitrack
+EOF
+
+rm -f /tmp/luci-indexcache
+exit 0
+

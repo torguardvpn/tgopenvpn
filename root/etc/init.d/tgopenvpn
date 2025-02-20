@@ -1,0 +1,171 @@
+#!/bin/bash /etc/rc.common
+# TorGuard OpenVPN init script
+
+START=10
+STOP=15
+
+USE_PROCD=1
+
+NAME=tgopenvpn
+
+stop_service() {
+    procd_kill openvpn
+    rm /etc/openvpn/torguard/userpass.txt
+    rm /etc/openvpn/client.conf
+
+    # Check if 'lan' to 'wan' forwarding exists
+    lan_wan_exists=0
+    lan_ovpn_indexes=()
+    forwarding_indexes=$(uci show firewall | awk -F'[][]' '/@forwarding/{print $2}')
+
+    for index in $forwarding_indexes; do
+        src=$(uci get firewall.@forwarding[$index].src)
+        dest=$(uci get firewall.@forwarding[$index].dest)
+
+        if [[ "$src" == "lan" && "$dest" == "wan" ]]; then
+            lan_wan_exists=1
+        elif [[ "$src" == "lan" && "$dest" == "ovpn" ]]; then
+            lan_ovpn_indexes+=($index)
+        fi
+    done
+
+    # If 'lan' to 'wan' forwarding doesn't exist, add it
+    if [[ "$lan_wan_exists" -eq "0" ]]; then
+        uci add firewall forwarding
+        uci set firewall.@forwarding[-1].src="lan"
+        uci set firewall.@forwarding[-1].dest="wan"
+        uci commit firewall
+        /etc/init.d/firewall reload
+    fi
+
+    # Delete 'lan' to 'ovpn' forwarding
+    for index in ${lan_ovpn_indexes[@]}; do
+        uci delete firewall.@forwarding[$index]
+    done
+    uci commit firewall
+    /etc/init.d/firewall reload
+}
+
+start_service() {
+    config_load tgopenvpn_cfg
+
+    local server
+    local dedicated
+    local dediserver
+    local protocol
+    local port
+    local cipher
+    local username
+    local password
+    local auth
+
+    config_get server settings server
+    config_get dedicated settings dedicated
+    config_get dediserver settings dediserver
+    config_get protocol settings protocol
+    config_get port settings port
+    config_get cipher settings cipher
+    config_get username settings username
+    config_get password settings password
+
+    if [ "$dedicated" = "YES" ]; then
+        vpnserver=$dediserver
+    else
+        vpnserver=$server
+    fi
+
+    # Add the OpenVPN interface
+    uci -q delete network.ovpn
+    uci set network.ovpn="interface"
+    uci set network.ovpn.proto="none"
+    uci set network.ovpn.device="tun0"
+    uci commit network
+    /etc/init.d/network reload
+
+    # Add the 'ovpn' network to the 'wan' firewall zone
+    uci rename firewall.@zone[0]="lan"
+    uci rename firewall.@zone[1]="wan"
+    uci del_list firewall.wan.device="tun+"
+    uci add_list firewall.wan.device="tun+"
+    uci -q delete firewall.ovpn
+    uci set firewall.ovpn="zone"
+    uci set firewall.ovpn.output="ACCEPT"
+    uci set firewall.ovpn.forward="REJECT"
+    uci set firewall.ovpn.input="REJECT"
+    uci set firewall.ovpn.masq="1"
+    uci set firewall.ovpn.name="ovpn"
+    uci add_list firewall.ovpn.network="ovpn"
+    uci commit firewall
+
+    # Check if 'lan' to 'ovpn' forwarding exists
+    lan_ovpn_exists=0
+    forwarding_indexes=$(uci show firewall | awk -F'[][]' '/@forwarding/{print $2}')
+
+    for index in $forwarding_indexes; do
+        src=$(uci get firewall.@forwarding[$index].src)
+        dest=$(uci get firewall.@forwarding[$index].dest)
+
+        if [[ "$src" == "lan" && "$dest" == "ovpn" ]]; then
+            lan_ovpn_exists=1
+        fi
+    done
+
+    # If 'lan' to 'ovpn' forwarding doesn't exist, add it
+    if [[ "$lan_ovpn_exists" -eq "0" ]]; then
+        uci add firewall forwarding
+        uci set firewall.@forwarding[-1].src="lan"
+        uci set firewall.@forwarding[-1].dest="ovpn"
+        uci commit firewall
+        /etc/init.d/firewall reload
+    fi
+
+    /etc/init.d/firewall reload
+    reload_config
+
+    IFS='|' read -r portnumber auth <<< "$port"
+
+    if [ ! -f /etc/openvpn/torguard/userpass.txt ]; then
+        umask go=
+        cat << EOF > /etc/openvpn/torguard/userpass.txt
+$username
+$password
+EOF
+    fi
+    
+    chmod 600 /etc/openvpn/torguard/userpass.txt
+    
+    if [ ! -f /etc/openvpn/client.conf ]; then
+        umask go=
+        cat << EOF > /etc/openvpn/client.conf
+client
+dev tun
+proto $protocol
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+ca /etc/openvpn/torguard/ca.crt
+remote-cert-tls server
+tls-auth /etc/openvpn/torguard/ta.key 1
+cipher $cipher
+comp-lzo
+verb 3
+fast-io
+auth-user-pass /etc/openvpn/torguard/userpass.txt
+remote-random
+auth $auth
+reneg-sec 0
+remote $vpnserver $portnumber
+sndbuf 393216
+rcvbuf 393216
+log /tmp/openvpn.log
+EOF
+    fi
+
+    procd_open_instance
+    procd_set_param command /usr/sbin/openvpn --config /etc/openvpn/client.conf
+    procd_set_param file /etc/openvpn/client.conf
+    procd_set_param stdout 1 
+    procd_set_param stderr 1 
+    procd_close_instance
+}
