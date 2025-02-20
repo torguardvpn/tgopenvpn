@@ -29,7 +29,7 @@ cd ~/openwrt/package
 
 2️⃣ **Clone the TorGuard OpenVPN App Repository**  
 ```bash
-git clone https://github.com/TorGuard/tgopenvpn.git
+git clone https://github.com/torguardvpn/tgopenvpn.git
 ```
 
 3️⃣ **Compile the Package**  
@@ -41,7 +41,7 @@ make package/tgopenvpn/compile V=s
 4️⃣ **Locate the Compiled `.ipk` File**  
 After compilation, the package will be found in:  
 ```
-~/openwrt/bin/packages/<target_architecture>/base/tgopenvpn.ipk
+~/openwrt/bin/packages/<target_architecture>/base/tgopenvpn_25.050.05753.7535d7a_all.ipk
 ```
 *(Replace `<target_architecture>` with your OpenWRT device's architecture.)*  
 
@@ -50,7 +50,7 @@ After compilation, the package will be found in:
 ### 📦 **Install Precompiled `.ipk` Package**  
 
 #### 🖥️ **Method 1: Install via OpenWRT Web UI**  
-1️⃣ **Download the `.ipk` file** from the [GitHub Releases](https://github.com/TorGuard/tgopenvpn/releases).  
+1️⃣ **Download the `.ipk` file** from: https://github.com/torguardvpn/tgopenvpn/releases/download/v25.050.05753/tgopenvpn_25.050.05753.7535d7a_all.ipk  
 2️⃣ **Log into OpenWRT's Web Interface**.  
 3️⃣ Navigate to **System ⚙️ → Software**.  
 4️⃣ Click **Upload Package**, select the `.ipk` file, and click **Install**.  
@@ -66,7 +66,7 @@ ssh root@192.168.1.1
 2️⃣ **Download and Install the Package**  
 ```bash
 cd /tmp
-wget https://github.com/TorGuard/tgopenvpn/releases/latest/download/tgopenvpn.ipk
+wget https://github.com/torguardvpn/tgopenvpn/releases/download/v25.050.05753/tgopenvpn_25.050.05753.7535d7a_all.ipk
 opkg install tgopenvpn.ipk
 ```
 
@@ -86,7 +86,7 @@ opkg install tgopenvpn.ipk
 ## 🔗 **Support & Updates**  
 This OpenWRT app is **officially maintained by TorGuard**.  
 📞 **Support:** [TorGuard Support](https://torguard.net/)  
-📢 **Latest Releases:** [GitHub Releases](https://github.com/TorGuard/tgopenvpn/releases)  
+📢 **Latest Releases:** [GitHub Releases](https://github.com/torguardvpn/tgopenvpn/releases/)
 
 ---
 
