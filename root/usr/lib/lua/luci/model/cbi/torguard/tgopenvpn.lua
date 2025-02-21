@@ -53,6 +53,15 @@ user = s:option(Value, "username", translate("VPN Username"))
 pass = s:option(Value, "password", translate("VPN Password"))
 pass.password = true
 
+
+-- Enable Ovpn Option
+enabled_option = s:option(ListValue, "status", "Enable OpenVPN")
+enabled_option:value("yes", "Yes")
+enabled_option:value("no", "No")
+enabled_option.default = "no"
+enabled_option.optional = false
+enabled_option.rmempty = false
+
 svr = s:option(ListValue, "server", translate("VPN Server"))
 -- Add all servers here
 svr:value("ar.torguard.com", "Argentina")
