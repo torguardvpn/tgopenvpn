@@ -49,6 +49,13 @@ stop_service() {
 start_service() {
     config_load tgopenvpn_cfg
 
+    # Check if VPN is enabled
+    config_get status settings status
+    if [ "$status" = "no" ]; then
+        logger -t tgwireguard "TorGuard OpenVPN is disabled in config. Exiting."
+        exit 0
+    fi
+
     local server
     local dedicated
     local dediserver
